@@ -146,19 +146,6 @@ The figure below presents the resulting cooperative scheduling solution on a rea
 - 设计约束感知的深度强化学习模块，学习可行性导向的调度分布
 - 将 DRL 策略采样的高质量个体注入 NSGA-II 初始种群
 - 基于任务失败数、makespan、负载均衡、总行驶距离进行多目标 Pareto优化
-src/
-├── core/
-│ ├── config.py # 实验配置、数据类（Task/Vehicle/Solution）
-│ ├── decode.py # 染色体 → 调度记录解码
-│ ├── encoding.py # 染色体编码、遗传算子（OX/Uniform/Insertion/Reset）
-├── rl/
-│ ├── drl_policy.py # 策略网络（TaskPolicyNet）
-│ ├── drl_env.py # 环境交互、奖励函数（R_tw + R_sync）
-│ └── drl_trainer.py # REINFORCE 训练器
-└── ea/
-├── nsga2_solver.py # NSGA-II 求解器
-├── nsgaii.py # NSGA-II 基线（实数编码版本）
-└── drl_nsgaii_solver.py # DRL-NSGA-II 混合求解器
 ---
 
 ### 基本前置
