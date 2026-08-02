@@ -2,6 +2,8 @@
 
 ---
 
+Closed-track testing evolves from isolated scenarios to continuous scenario flows, requiring dynamic cooperative deployment of limited controllable targets to generate sequential interactive events. This problem faces multiple coupled constraints including task assignment, network routing, and temporal synchronization, yielding a highly sparse feasible space. We propose a constraint-aware hybrid framework integrating DRL with NSGA-II. DRL learns a feasibility-oriented scheduling distribution with time-window deviation and synchronization error as rewards, producing high-quality initial individuals, while NSGA-II performs Pareto refinement over task failure count, makespan, workload imbalance, and travel distance. A two-layer chromosome encoding with tailored genetic operators and a unified decoder ensure consistent evaluation. Simulations on 60 tasks with 25 targets show the hybrid strategy reduces the failure rate from 1% to 0%, confirming the layered design where DRL learns feasible distributions and EA conducts Pareto optimization.
+
 ## 1. Framework
 
 ### 1.1 Problem Formulation
@@ -82,7 +84,7 @@ src/
 
 The constraint-aware reward is defined as:
 
-$$R = R_{tw} + R_{sync}$$
+$R = R_{tw} + R_{sync}$
 
 where:
 
@@ -95,11 +97,19 @@ This reward design ensures that the DRL module learns scheduling patterns that s
 
 ## 3. Results and Demonstration
 
-The following animation illustrates a representative scheduling simulation for a 10-task instance. Multiple OTs are dynamically assigned and routed to their respective staging points while the VUT proceeds along its reference trajectory. The visualization clearly captures the temporal coordination and spatial distribution of the cooperative schedule, demonstrating the framework's ability to generate executable and well-synchronized task plans in a realistic closed-track setting.
+To further validate the scalability and interpretability of the proposed framework, we first conduct a small-scale experiment with 4 OTs. In this setting, the scheduling horizon is relatively short, and the synchronization requirements are moderate. As shown in Fig. 3(a), the DRL-guided policy efficiently assigns the 4 OTs to their respective staging points with near-zero synchronization errors. The simplified interaction among OTs allows the NSGA-II refinement to converge rapidly, producing a Pareto front that simultaneously minimizes makespan and travel distance. This 4-task case serves as a sanity check, confirming that the constraint-aware reward mechanism functions correctly before scaling to more complex instances.
 
-![Vehicle scheduling simulation (10 tasks)](./config/drl_10task_vis.gif)
+![4-OT cooperative scheduling simulation (small-scale validation)](./config/drl_4task_vis.gif)
 
-**Figure 3:** Simulation of cooperative OT scheduling for a 10-task instance. Each OT is color-coded, and the VUT trajectory is shown in red.
+**Figure 3(a):** Simulation of cooperative OT scheduling for a 4-task instance, demonstrating rapid convergence and precise synchronization under low coupling.
+
+Subsequently, we scale up to a more representative 10-task instance to examine the framework's performance under increased task density and tighter coupling. Multiple OTs are dynamically assigned and routed to their respective staging points while the VUT proceeds along its reference trajectory. The following animation clearly captures the temporal coordination and spatial distribution of the cooperative schedule, demonstrating the framework's ability to generate executable and well-synchronized task plans in a realistic closed-track setting.
+
+![10-OT cooperative scheduling simulation (representative instance)](./config/drl_10task_vis.gif)
+
+**Figure 3(b):** Simulation of cooperative OT scheduling for a 10-task instance. Each OT is color-coded, and the VUT trajectory is shown in red.
+
+Together, these two cases—ranging from simple to moderately complex—illustrate the robustness of the proposed DRL-NSGA-II hybrid framework across different problem scales.
 
 ---
 
