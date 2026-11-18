@@ -1,17 +1,4 @@
-# core/decoder.py
-
-from __future__ import annotations
-from core.graph_utils import ShortestTimeOracle
 import math
-from dataclasses import dataclass
-from typing import Dict, List, Tuple, Optional, Any
-
-from core.entities import Task, Vehicle, Scenario
-from core.graph_utils import ShortestPathManager
-
-
-INF = 1e18
-
 
 @dataclass
 class TaskExecRecord:
@@ -25,14 +12,12 @@ class TaskExecRecord:
     travel_to_u: float
     exec_edge_time: float
 
-
 @dataclass
 class VehicleState:
     vehicle_id: str
     cur_node: str
     cur_time: float
     route_task_indices: List[int]
-
 
 @dataclass
 class DecodeResult:
@@ -46,11 +31,6 @@ class DecodeResult:
     total_exec_edge: float
     failed_tasks: List[int]
 
-
-# core/decoder.py
-
-
-
 def _task_exec_edge_time(task: Task, oracle: ShortestTimeOracle) -> float:
     """
     一个任务 = 在边 (u -> v) 上执行
@@ -61,7 +41,6 @@ def _task_exec_edge_time(task: Task, oracle: ShortestTimeOracle) -> float:
     if travel_time >= 1e17:  # 不可达
         travel_time = 1e9  # 返回一个大数
     return travel_time + float(task.service)
-
 
 def _evaluate_vehicle_for_task(
         vstate: VehicleState,
@@ -77,21 +56,9 @@ def _evaluate_vehicle_for_task(
         return INF, INF, INF, INF, INF
 
     arrive_u = vstate.cur_time + travel_to_u
-
-    tw_a, tw_b = task.tw
-    start_service = max(arrive_u, tw_a)  # 允许等待
-    wait = max(0.0, tw_a - arrive_u)
-
-    exec_edge_time = _task_exec_edge_time(task, oracle)
-    finish_service = start_service + exec_edge_time
-
     # 时间窗成功判定：执行开始不晚于 b
     lateness = max(0.0, start_service - tw_b)
     success = 1 if start_service <= tw_b + 1e-9 else 0
-
-    # greedy added cost
-    penalty = 1e6 * (1 - success) + 1000.0 * lateness
-    added_cost = penalty + travel_to_u + 0.1 * wait + 0.1 * exec_edge_time
 
     return arrive_u, start_service, finish_service, lateness, added_cost
 
@@ -245,6 +212,7 @@ def decode_priority_solution(
         total_exec_edge=total_exec_edge,
         failed_tasks=failed_tasks
     )
+
 def decode_priority_scores(
     scenario: Scenario,
     spm: ShortestPathManager,
