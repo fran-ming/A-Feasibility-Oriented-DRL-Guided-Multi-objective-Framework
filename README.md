@@ -6,7 +6,7 @@
 
 This study investigates the cooperative scheduling problem of controllable object targets (OTs) in continuous scenario-flow testing for closed-track automated driving. To address the difficulty of generating executable schedules under coupled constraints, including task assignment, constrained network routing, and strict temporal synchronization with limited OTs, a constraint-aware deep reinforcement learning-guided NSGA-II hybrid optimization framework is proposed. The framework learns feasibility-oriented scheduling distributions through deep reinforcement learning and integrates NSGA-II for multi-objective refinement, achieving a balance between scheduling feasibility and optimization performance.
 
-![](D:\github_submit\config\overview_of_algorithm.png)
+![](./config/overview_of_algorithm.png)
 
 **Figure 1:** Overview of the proposed constraint-aware DRL-guided NSGA-II framework for cooperative OT scheduling in continuous scenario-flow testing.
 
@@ -16,19 +16,34 @@ This study investigates the cooperative scheduling problem of controllable objec
 
 ### 1.1 Code Structure
 
-src/  
-├── core/  
-│ ├── config.py # Experiment configuration and data classes (Task/Vehicle/Solution)  
-│ ├── decode.py # Chromosome-to-schedule decoding  
-│ ├── encoding.py # Chromosome encoding and genetic operators 
-├── rl/  
-│ ├── drl_policy.py # Policy network (TaskPolicyNet)  
-│ ├── drl_env.py # Environment interaction and reward function (R_tw + R_sync)  
-│ └── drl_trainer.py # REINFORCE trainer  
-└── ea/  
-├── nsga2_solver.py # NSGA-II solver  
-├── nsgaii.py # NSGA-II baseline (real-valued encoding)  
-└── drl_nsgaii_solver.py # DRL-NSGA-II hybrid solver
+src/
+├── core/
+│   ├── config.py              # Experiment configuration and data classes (Task/Vehicle/Solution)
+│   ├── decode.py              # Chromosome-to-schedule decoding
+│   └── encoding.py            # Chromosome encoding and genetic operators
+│
+├── rl/
+│   ├── drl_policy.py          # Policy network (TaskPolicyNet)
+│   ├── drl_env.py             # Environment interaction and reward function 
+│   └── drl_trainer.py         # REINFORCE trainer
+│
+├── ea/
+│   ├── nsga2_solver.py        # NSGA-II solver
+│   ├── nsgaii.py              # NSGA-II baseline 
+│   └── drl_nsgaii_solver.py   # DRL-NSGA-II hybrid solver
+│
+└── sumo/                      # SUMO execution of a schedule and cooperative task handling
+    ├── cooperative_schedule.py  # Cooperative groups, shared window, release clock, theoretical delay
+    ├── retime.py                # VUT retiming and OT dwell re-anchoring to the trigger crossings
+    ├── build_fcd.py             # Recorded schedule to FCD replay file
+    ├── replay_utils.py           # Lane-centre geometry, id mapping, FCD writing
+    ├── scenario_replay.sumocfg   # SUMO configuration
+    ├── types.add.xml             # Vehicle types of the VUT and the OTs
+    │
+    └── data/
+        ├── tasks.csv             # Task table: trigger node, OT, service time, task point
+        ├── route.csv             # Per-edge route of every vehicle
+        └── speed.csv             # Speed of every vehicle on a 0.2 s grid
 
 ### 1.2 Prerequisites
 
@@ -37,6 +52,7 @@ src/
 - NetworkX
 - NumPy / Pandas
 - Matplotlib
+- [SUMO](https://eclipse.dev/sumo/) 1.28.0 with [sumolib](https://sumo.dlr.de/docs/Tools/Sumolib.html)
 
 ### 1.3 Key Modules
 
@@ -45,6 +61,10 @@ src/
 - `rl/drl_trainer.py`: Trains the policy network using the REINFORCE algorithm and generates elite individuals for population initialization.
 - `ea/nsga2_solver.py`: Implements the main NSGA-II loop, including non-dominated sorting, crowding distance computation, and tournament selection.
 - `ea/drl_nsgaii_solver.py`: Hybrid solver that first trains the DRL policy and then uses the sampled solutions to initialize the NSGA-II population.
+- `sumo/cooperative_schedule.py`: Implements the cooperative-task rules and reports the theoretical delay of every task.
+- `sumo/retime.py`: Builds the executed scenario with a continuous VUT trajectory and OT dwell times re-anchored to the VUT trigger crossings.
+- `sumo/build_fcd.py`: Replays the recorded schedule unchanged as an FCD file.
+- `sumo/replay_utils.py`: Shared helpers for lane-centre geometry and FCD output.
 
 ### 1.4 Reward Function
 
@@ -58,6 +78,25 @@ where:
 - $R_{sync} = -\frac{1}{|C|}\sum_{s \in C} e_s^{sync}$ penalizes synchronization deviations among OTs assigned to the same cooperative event.
 
 This reward design ensures that the DRL module learns scheduling patterns that satisfy both task-level temporal constraints and group-level coordination requirements.
+
+### 1.5 SUMO Execution and Cooperative Task Handling
+
+The `sumo/` folder executes a schedule in SUMO with one VUT and four OTs. It contains the scenario logic only. The road network and all geographic data are not part of the repository.
+
+#### Simulation workflow
+
+1. **Inputs.** `data/` holds the routes, the speed profiles on a 0.2 s grid and the task table. Nodes and edges use neutral ids and no coordinates are stored.
+2. **Cooperative analysis.** `cooperative_schedule.py` reads the time at which the VUT reaches each trigger node and derives the cooperative groups, time windows, release instants and theoretical delays.
+3. **Replay generation.** `build_fcd.py` maps the recorded schedule onto the lane centre lines. `retime.py` additionally gives the VUT a continuous trajectory and re-anchors every OT dwell to the instant the VUT crosses its trigger node.
+4. **Execution.** `scenario_replay.sumocfg` loads the network and replays `output/replay.fcd.xml` with the FCD replay device. The VUT speed control and the OT releases are already contained in the replay file.
+
+#### Cooperative task handling
+
+Seven task points of five tasks are served by four OTs while the VUT never stops. Coordination is the difficult part, not running SUMO. Two situations need care. Tasks gated by the same trigger node, such as T3#0 and T3#1, must be served at the same instant by different OTs. The two halves of a task gated by different trigger nodes, such as T1#0 and T1#1, are served in sequence, so the second half carries the VUT travel time between the two nodes as its theoretical delay.
+
+Four rules handle both. Tasks sharing a trigger node form one cooperative group, which corresponds to `Task.vut_trigger` in `src/core/config.py` and to `group_by_trigger()` in `sumo/cooperative_schedule.py`. Each group has one time window anchored at the VUT crossing of its node. Each node has one release clock that is computed once and read by all members, so all OTs of a group leave their task points in the same simulation step. A group needs distinct OTs, which `group_is_feasible()` checks.
+
+The VUT never stops because the release is triggered by its arrival and not by the end of the service. The schedule only has to guarantee that every OT is in position before the VUT reaches the trigger, and `retime.py` reports every OT that is late.
 
 ---
 
@@ -203,25 +242,35 @@ Run Optimization Algorithm
 ↓  
 Decode Scheduling Solution  
 ↓  
-Analyze Optimization Results
+Analyze Optimization Results  
+↓  
+Execute the schedule in SUMO, optional, see Section 2.7
+
+## 2.7 Running the SUMO Simulation
+
+This optional step executes a schedule in SUMO. All commands are run inside `sumo/`.
+
+1. Install the dependencies in `requirements.txt` and set `SUMO_HOME`.
+2. Put your own road network at `network/map.net.xml`. The edge and junction ids in `data/route.csv` and `data/tasks.csv` must match it.
+3. Run `cooperative_schedule.py` for the cooperative analysis, then `retime.py` or `build_fcd.py` to generate `output/replay.fcd.xml`, then open `scenario_replay.sumocfg` in `sumo-gui`.
+
+After changing the network, copy the trigger distances printed by `cooperative_schedule.py` into the column `trigger_s` of `data/tasks.csv`.
 
 ---
 
 ## 3. Results and Demonstration
 
-To further validate the scalability and interpretability of the proposed framework, we first conduct a small-scale experiment with 4 OTs. In this setting, the scheduling horizon is relatively short, and the synchronization requirements are moderate. As shown in Fig. 3(a), the DRL-guided policy efficiently assigns the 4 OTs to their respective staging points with near-zero synchronization errors. The simplified interaction among OTs allows the NSGA-II refinement to converge rapidly, producing a Pareto front that simultaneously minimizes makespan and travel distance. This 4-task case serves as a sanity check, confirming that the constraint-aware reward mechanism functions correctly before scaling to more complex instances.
+https://github.com/user-attachments/assets/75ea5618-04bc-4859-957e-5b2b40cf36a6
 
-![4-OT cooperative scheduling simulation (small-scale validation)](./config/drl_4task_vis.gif)
+To validate the executability of the generated schedule, we implement it in SUMO (version 1.28.0), an open-source microscopic traffic simulator, using the road network of an actual closed-track proving ground. A representative VUT straight route is selected, covering five typical testing scenarios in sequence: roundabout, car following, intersection, U-turn, and boxed-in. These scenarios are modeled as five testing events (T1–T5) served by four OTs. The VUT travels at a nominal speed of 6 m/s, with deceleration permitted during task execution and interaction, while OT speeds are limited to 0–10 m/s.
 
-**Figure 2(a):** Simulation of cooperative OT scheduling for a 4-task instance, demonstrating rapid convergence and precise synchronization under low coupling.
+The generated schedule is successfully executed without violating road-network or vehicle-motion constraints. All OTs reach their assigned task locations, with some reused across multiple tasks to accommodate the task distribution.
 
-Subsequently, we scale up to a more representative 10-task instance to examine the framework's performance under increased task density and tighter coupling. Multiple OTs are dynamically assigned and routed to their respective staging points while the VUT proceeds along its reference trajectory. The following animation clearly captures the temporal coordination and spatial distribution of the cooperative schedule, demonstrating the framework's ability to generate executable and well-synchronized task plans in a realistic closed-track setting.
+All seven task executions start before the corresponding VUT arrival times, including both same-trigger and different-trigger cooperative tasks. No additional departure delays are introduced by the OTs, indicating effective temporal coordination.
 
-![10-OT cooperative scheduling simulation (representative instance)](./config/drl_10task_vis.gif)
+The VUT maintains its scheduled progression and decelerates only during designated interaction events. No waiting caused by late OT arrivals is observed, demonstrating that the generated schedule supports continuous test execution.
 
-**Figure 2(b):** Simulation of cooperative OT scheduling for a 10-task instance. Each OT is color-coded, and the VUT trajectory is shown in red.
-
-Together, these two cases—ranging from simple to moderately complex—illustrate the robustness of the proposed DRL-NSGA-II hybrid framework across different problem scales.
+Further validation with more cooperative tasks is needed to assess the robustness of these observations under higher coordination demands.
 
 ---
 

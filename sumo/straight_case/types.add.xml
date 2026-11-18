@@ -1,0 +1,4 @@
+<?xml version='1.0' encoding='utf-8'?>
+<additional><vType id="vutType" vClass="passenger" accel="4.5" decel="4.5" maxSpeed="6.0" length="4.5" minGap="3.0" sigma="0" speedFactor="1" speedDev="0" color="0.55,0.1,0.75" emergencyDecel="4.5" tau="1.0" />
+  <vType id="serviceType" vClass="passenger" accel="4.5" decel="4.5" maxSpeed="10.0" length="4.5" minGap="3.0" sigma="0" speedFactor="1.0" speedDev="0" color="0.1,0.35,0.9" emergencyDecel="4.5" tau="1.2" jmIgnoreFoeProb="0" jmIgnoreFoeSpeed="0" jmTimegapMinor="3.0" impatience="0" />
+  </additional>
