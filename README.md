@@ -15,7 +15,7 @@ This study investigates the cooperative scheduling problem of controllable objec
 ## 1. Source Code
 
 ### 1.1 Code Structure
-
+```
 src/
 ├── core/
 │   ├── config.py              # Experiment configuration and data classes (Task/Vehicle/Solution)
@@ -44,7 +44,7 @@ src/
         ├── tasks.csv             # Task table: trigger node, OT, service time, task point
         ├── route.csv             # Per-edge route of every vehicle
         └── speed.csv             # Speed of every vehicle on a 0.2 s grid
-
+```
 ### 1.2 Prerequisites
 
 - Python 3.8+
@@ -260,9 +260,13 @@ After changing the network, copy the trigger distances printed by `cooperative_s
 
 ## 3. Results and Demonstration
 
+https://github.com/user-attachments/assets/d76731d9-a236-4d5c-9fbe-872aae68f866
+
+A dynamic animation is provided to illustrate the execution process of the generated schedule, showing the movements and task statuses of the VUT and four OTs (V0–V3) along the road network. The animation demonstrates how OTs navigate to their assigned task locations, with some vehicles collaborating on the same tasks. OTs can arrive at designated locations in advance and wait for the VUT, as indicated by the waiting states, thereby ensuring synchronization with VUT-triggered task execution. As the VUT progresses along its route, the assigned OTs perform their respective tasks and subsequently return to idle states. This visualization further illustrates the coordination between vehicle movements, task assignments, and temporal synchronization throughout the execution process.
+
 https://github.com/user-attachments/assets/75ea5618-04bc-4859-957e-5b2b40cf36a6
 
-To validate the executability of the generated schedule, we implement it in SUMO (version 1.28.0), an open-source microscopic traffic simulator, using the road network of an actual closed-track proving ground. A representative VUT straight route is selected, covering five typical testing scenarios in sequence: roundabout, car following, intersection, U-turn, and boxed-in. These scenarios are modeled as five testing events (T1–T5) served by four OTs. The VUT travels at a nominal speed of 6 m/s, with deceleration permitted during task execution and interaction, while OT speeds are limited to 0–10 m/s.
+In addition,to validate the executability of the generated schedule, we implement it in SUMO (version 1.28.0), an open-source microscopic traffic simulator, using the road network of an actual closed-track proving ground. A representative VUT straight route is selected, covering five typical testing scenarios in sequence: roundabout, car following, intersection, U-turn, and boxed-in. These scenarios are modeled as five testing events (T1–T5) served by four OTs. The VUT travels at a nominal speed of 6 m/s, with deceleration permitted during task execution and interaction, while OT speeds are limited to 0–10 m/s.
 
 The generated schedule is successfully executed without violating road-network or vehicle-motion constraints. All OTs reach their assigned task locations, with some reused across multiple tasks to accommodate the task distribution.
 
